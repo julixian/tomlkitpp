@@ -275,6 +275,15 @@ void testEmptyItemSerializationErrorAndBoundsChecking()
     constexpr std::string_view kParsedLongSingle =
         "dictNames = [\"PostStd\", \"PostPunctuation\", \"PostRareCnChar\", \"PostPunctuation_GT\"]\n";
     CHECK(tomlkit::format(tomlkit::parse(kParsedLongSingle)) == kParsedLongSingle);
+
+    // 6. 验证多行基本字符串统一将制表符转义为可见的 `\t`
+    Item promptDoc = Item::document();
+    Item promptVal("NAME\tSRC\tID\nalice\thello\t1");
+    promptVal.setStringStyle(StringStyle::MultilineBasic);
+    promptDoc["PROMPT"] = std::move(promptVal);
+    const std::string promptToml = tomlkit::format(promptDoc);
+    CHECK(promptToml.contains("NAME\\tSRC\\tID\nalice\\thello\\t1"));
+    CHECK(tomlkit::parse(promptToml)["PROMPT"].asString() == "NAME\tSRC\tID\nalice\thello\t1");
 }
 
 int main()

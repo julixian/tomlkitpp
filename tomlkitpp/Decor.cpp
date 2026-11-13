@@ -221,12 +221,7 @@ std::string escapeBasicString(std::string_view value, bool multiline, [[maybe_un
             out.append("\\r");
             break;
         case '\t':
-            if (multiline) {
-                out.push_back('\t');
-            }
-            else {
-                out.append("\\t");
-            }
+            out.append("\\t");
             break;
         default:
             if (b < 0x20u || b == 0x7Fu) {
