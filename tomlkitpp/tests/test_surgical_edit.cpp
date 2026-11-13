@@ -137,11 +137,68 @@ void testAtomicFileSaveAndReload()
     fs::remove_all(tempDir, ec);
 }
 
+void testSubtreeArrayOfTablesExtractAndGraft()
+{
+    using namespace tomlkit;
+
+    constexpr std::string_view kOriginal =
+        "[backend]\n"
+        "timeout = 30\n"
+        "\n"
+        "[plugins.Epub]\n"
+        "bilingualOutput = true\n"
+        "\n"
+        "[[plugins.Epub.preprocRegex]]\n"
+        "# 保留的注释\n"
+        "org = '<ruby>(.+?)</ruby>'\n"
+        "rep = '$1'\n"
+        "\n"
+        "[[plugins.Epub.postprocRegex]]\n"
+        "\n"
+        "[plugins.SkipTrans]\n"
+        "skipH = false\n";
+
+    Item projectConfig = parse(kOriginal);
+
+    // 1. 提取嵌套表数组到临时子文档时，节头路径应自动重映射为 `[[preprocRegex]]`
+    Item preRegexDoc = Item::document();
+    preRegexDoc["preprocRegex"] = findArrayOrEmpty(projectConfig, "plugins", "Epub", "preprocRegex");
+    const std::string subToml = format(preRegexDoc);
+    CHECK(subToml.contains("[[preprocRegex]]"));
+    CHECK(!subToml.contains("[[plugins.Epub.preprocRegex]]"));
+    CHECK(subToml.contains("# 保留的注释"));
+
+    // 2. 在子文档中编辑后解析并嫁接回原文档，节头路径与原始节顺序均应正确还原
+    const std::string editedSubToml = subToml +
+        "\n[[preprocRegex]]\n"
+        "org = 'foo'\n"
+        "rep = 'bar'\n";
+    Item reparsedSub = parse(editedSubToml);
+    projectConfig["plugins", "Epub", "preprocRegex"] = reparsedSub["preprocRegex"];
+
+    const std::string finalToml = format(projectConfig);
+    CHECK(finalToml.contains("[[plugins.Epub.preprocRegex]]"));
+    CHECK(!finalToml.contains("\n[[preprocRegex]]"));
+    CHECK(finalToml.contains("# 保留的注释"));
+    CHECK(finalToml.contains("org = 'foo'"));
+
+    const size_t posBackend = finalToml.find("[backend]");
+    const size_t posEpub = finalToml.find("[plugins.Epub]");
+    const size_t posPre = finalToml.find("[[plugins.Epub.preprocRegex]]");
+    const size_t posPost = finalToml.find("[[plugins.Epub.postprocRegex]]");
+    const size_t posSkip = finalToml.find("[plugins.SkipTrans]");
+    CHECK(posBackend < posEpub);
+    CHECK(posEpub < posPre);
+    CHECK(posPre < posPost);
+    CHECK(posPost < posSkip);
+}
+
 int main()
 {
     testSurgicalSingleLineEdit();
     testArrayCommentPreservationOnEraseAndPush();
     testAtomicFileSaveAndReload();
+    testSubtreeArrayOfTablesExtractAndGraft();
 
     if (g_failures != 0) {
         std::println(std::cerr, "test_surgical_edit failed with {} error(s)", g_failures);

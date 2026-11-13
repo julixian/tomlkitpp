@@ -43,6 +43,22 @@ namespace
         return false;
     }
 
+    bool headerKeyPathMatches(
+        std::span<const KeySegment> recorded,
+        std::span<const KeySegment> actual
+    ) noexcept
+    {
+        if (recorded.size() != actual.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < recorded.size(); ++i) {
+            if (recorded[i].name != actual[i].name) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     class EmitterImpl
     {
     public:
@@ -108,9 +124,9 @@ namespace
                     }
                 }
 
-                const auto& pathToUse = task.pTable->headerKeyPath.empty()
-                    ? task.fallbackPath
-                    : task.pTable->headerKeyPath;
+                const auto& pathToUse = headerKeyPathMatches(task.pTable->headerKeyPath, task.fallbackPath)
+                    ? task.pTable->headerKeyPath
+                    : task.fallbackPath;
 
                 emitSectionHeader(out, *task.pTable, task.isAotElement, pathToUse);
                 emitSectionBody(out, *task.pTable, pathToUse);
@@ -229,6 +245,7 @@ namespace
             std::vector<SectionTask>& outSections
         ) const
         {
+            uint32_t runningSiblingAnchor = parentAnchorOrder;
             for (const auto& pEntry : parentTbl.entries) {
                 const Item& val = *pEntry->value;
 
@@ -241,22 +258,29 @@ namespace
 
                     if (pSubTbl->style == TableStyle::Dotted) {
                         // 点分表自身不输出 `[header]`，但内部可能挂载了 `[[fruit.apple.seeds]]` 等子节
-                        collectSections(*pSubTbl, currentPath, parentAnchorOrder, discoveryCounter, outSections);
+                        collectSections(*pSubTbl, currentPath, runningSiblingAnchor, discoveryCounter, outSections);
                     }
                     else if (pSubTbl->style == TableStyle::ImplicitSuper && !hasBodyEntries(*pSubTbl)) {
                         // 纯隐式父表无自身键值时不输出 `[header]`，继续递归其子表
                         const uint32_t subAnchor = maxParsedSectionOrderInSubtree(*pSubTbl);
+                        const uint32_t nextAnchor = subAnchor > 0 ? subAnchor : runningSiblingAnchor;
                         collectSections(
                             *pSubTbl,
                             currentPath,
-                            subAnchor > 0 ? subAnchor : parentAnchorOrder,
+                            nextAnchor,
                             discoveryCounter,
                             outSections
                         );
+                        if (subAnchor > 0) {
+                            runningSiblingAnchor = subAnchor;
+                        }
                     }
                     else {
-                        const uint32_t myAnchor = (pSubTbl->sectionOrder > 0) ? pSubTbl->sectionOrder : parentAnchorOrder;
-                        const uint32_t myDisc = (pSubTbl->sectionOrder > 0) ? 0u : discoveryCounter++;
+                        const uint32_t myAnchor = (pSubTbl->sectionOrder > 0) ? pSubTbl->sectionOrder : runningSiblingAnchor;
+                        const uint32_t myDisc = discoveryCounter++;
+                        if (pSubTbl->sectionOrder > 0) {
+                            runningSiblingAnchor = pSubTbl->sectionOrder;
+                        }
 
                         outSections.push_back(SectionTask{
                             .pTable = pSubTbl,
@@ -273,7 +297,7 @@ namespace
                 }
                 else if (const auto* pArr = val.arrayStorage(); pArr != nullptr && pArr->style == ArrayStyle::ArrayOfTables) {
                     currentPath.emplace_back(pEntry->key.leaf().name, pEntry->key.leaf().style);
-                    uint32_t runningAnchor = parentAnchorOrder;
+                    uint32_t runningAnchor = runningSiblingAnchor;
 
                     for (const auto& elem : pArr->elements) {
                         const auto* pElemTbl = elem.value->tableStorage();
@@ -282,8 +306,11 @@ namespace
                         }
 
                         const uint32_t myAnchor = (pElemTbl->sectionOrder > 0) ? pElemTbl->sectionOrder : runningAnchor;
-                        const uint32_t myDisc = (pElemTbl->sectionOrder > 0) ? 0u : discoveryCounter++;
+                        const uint32_t myDisc = discoveryCounter++;
                         runningAnchor = myAnchor;
+                        if (pElemTbl->sectionOrder > 0) {
+                            runningSiblingAnchor = pElemTbl->sectionOrder;
+                        }
 
                         outSections.push_back(SectionTask{
                             .pTable = pElemTbl,

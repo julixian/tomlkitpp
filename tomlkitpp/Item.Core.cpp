@@ -282,11 +282,118 @@ Item& Item::operator=(Item&& other) noexcept
     return *this;
 }
 
+namespace
+{
+    uint32_t extractSectionAnchor(const Item& item) noexcept
+    {
+        if (const TableStorage* pTbl = item.tableStorage()) {
+            if (pTbl->style != TableStyle::Inline) {
+                return pTbl->sectionOrder;
+            }
+        }
+        else if (const ArrayStorage* pArr = item.arrayStorage()) {
+            if (pArr->style == ArrayStyle::ArrayOfTables) {
+                for (const ArrayElement& elem : pArr->elements) {
+                    if (const TableStorage* pElemTbl = elem.value->tableStorage()) {
+                        if (pElemTbl->sectionOrder > 0) {
+                            return pElemTbl->sectionOrder;
+                        }
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
+    bool isPureWhitespace(std::string_view text) noexcept
+    {
+        for (const char ch : text) {
+            if (ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n') {
+                return false;
+            }
+        }
+        return !text.empty();
+    }
+
+    std::string extractLeadingSectionBlankPrefix(const Item& item)
+    {
+        if (const TableStorage* pTbl = item.tableStorage()) {
+            if (pTbl->style != TableStyle::Inline && isPureWhitespace(pTbl->headerDecor.prefix)) {
+                return pTbl->headerDecor.prefix;
+            }
+        }
+        else if (const ArrayStorage* pArr = item.arrayStorage()) {
+            if (pArr->style == ArrayStyle::ArrayOfTables && !pArr->elements.empty()) {
+                if (const TableStorage* pElemTbl = pArr->elements.front().value->tableStorage()) {
+                    if (isPureWhitespace(pElemTbl->headerDecor.prefix)) {
+                        return pElemTbl->headerDecor.prefix;
+                    }
+                }
+            }
+        }
+        return {};
+    }
+
+    void resetSubtreeSectionOrder(Item& item) noexcept
+    {
+        if (TableStorage* pTbl = item.tableStorage()) {
+            pTbl->sectionOrder = 0;
+            for (auto& pEntry : pTbl->entries) {
+                if (pEntry->value) {
+                    resetSubtreeSectionOrder(*pEntry->value);
+                }
+            }
+        }
+        else if (ArrayStorage* pArr = item.arrayStorage()) {
+            for (ArrayElement& elem : pArr->elements) {
+                if (elem.value) {
+                    resetSubtreeSectionOrder(*elem.value);
+                }
+            }
+        }
+    }
+
+    void applyImmediateSectionAnchor(Item& item, uint32_t anchor, std::string_view fallbackBlankPrefix)
+    {
+        if (TableStorage* pTbl = item.tableStorage()) {
+            if (pTbl->style != TableStyle::Inline) {
+                if (anchor > 0) {
+                    pTbl->sectionOrder = anchor;
+                }
+                if (pTbl->headerDecor.prefix.empty() && !fallbackBlankPrefix.empty()) {
+                    pTbl->headerDecor.prefix = std::string(fallbackBlankPrefix);
+                }
+            }
+        }
+        else if (ArrayStorage* pArr = item.arrayStorage()) {
+            if (pArr->style == ArrayStyle::ArrayOfTables) {
+                for (size_t i = 0; i < pArr->elements.size(); ++i) {
+                    if (TableStorage* pElemTbl = pArr->elements[i].value->tableStorage()) {
+                        if (anchor > 0) {
+                            pElemTbl->sectionOrder = anchor;
+                        }
+                        if (i == 0 && pElemTbl->headerDecor.prefix.empty() && !fallbackBlankPrefix.empty()) {
+                            pElemTbl->headerDecor.prefix = std::string(fallbackBlankPrefix);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void Item::assignPreservingDecor(Item&& replacement)
 {
     Key* const pSavedOwner = m_pOwningKey;
     const bool lhsHasDecor = !m_decor.prefix.empty() || !m_decor.suffix.empty();
     const bool rhsHasDecor = !replacement.m_decor.prefix.empty() || !replacement.m_decor.suffix.empty();
+
+    if (pSavedOwner != nullptr) {
+        const uint32_t oldAnchor = extractSectionAnchor(*this);
+        const std::string oldBlankPrefix = extractLeadingSectionBlankPrefix(*this);
+        resetSubtreeSectionOrder(replacement);
+        applyImmediateSectionAnchor(replacement, oldAnchor, oldBlankPrefix);
+    }
 
     m_payload = std::move(replacement.m_payload);
     m_rawRepr = std::move(replacement.m_rawRepr);
