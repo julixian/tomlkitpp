@@ -1,10 +1,17 @@
 [package]
 namespace = "tomlkit"
 name = "core"
+version = "1.0.0"
+standard = "c++23"
+license = "Apache-2.0"
 description = "Zero-dependency C++23 module-only format-preserving TOML v1.1 library"
 
 [build]
 default-profile = "release"
+cxxflags = [
+  "-finput-charset=UTF-8",
+  "-fexec-charset=UTF-8"
+]
 sources = [
   "**/*.cpp",
   "**/*.ixx",
@@ -16,7 +23,14 @@ module_extensions = [".ixx"]
 include_dirs = ["."]
 
 [target.windows.build]
-defines = ["_LIB"]
+defines = [
+  "_LIB",
+  "UNICODE",
+  "_UNICODE",
+  "WIN32_LEAN_AND_MEAN",
+  "NOMINMAX",
+  "_CRT_SECURE_NO_WARNINGS"
+]
 
 [targets.tomlkitpp]
 kind = "lib"
