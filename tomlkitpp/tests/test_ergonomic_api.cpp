@@ -227,6 +227,22 @@ void testEmptyItemSerializationErrorAndBoundsChecking()
     Item dictDoc = Item::document();
     dictDoc["gptDict"] = std::move(dictArr);
     CHECK(dictDoc.toToml().contains("\n  { org = \"a\", rep = \"b\" },\n  { org = \"c\", rep = \"d\" },\n]"));
+
+    // 4. 验证本地时区偏移日期时间往返与毫秒时间戳精确一致
+    constexpr int64_t kSampleMs = 1763060952345LL;
+    const OffsetDateTime localDt = OffsetDateTime::fromEpochMillisLocal(kSampleMs);
+    CHECK(localDt.isValid());
+    CHECK(!localDt.isUtcZ);
+    CHECK(localDt.toEpochMillis() == kSampleMs);
+
+    Item dtDoc = Item::document();
+    dtDoc["lastWriteTime"] = localDt;
+    const std::string dtToml = tomlkit::format(dtDoc);
+    CHECK(dtToml.contains("+") || dtToml.contains("-"));
+    const Item reparsedDtDoc = tomlkit::parse(dtToml);
+    CHECK(reparsedDtDoc["lastWriteTime"].isOffsetDateTime());
+    CHECK(reparsedDtDoc["lastWriteTime"].asOffsetDateTime() == localDt);
+    CHECK(reparsedDtDoc["lastWriteTime"].asOffsetDateTime().toEpochMillis() == kSampleMs);
 }
 
 int main()

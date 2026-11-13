@@ -140,6 +140,10 @@ struct OffsetDateTime
 
     // 换算为相对 1970-01-01T00:00:00Z 的 UTC 秒与纳秒，用于精确时间点比较
     std::pair<int64_t, uint32_t> toUtcEpoch() const noexcept;
+    int64_t toEpochMillis() const noexcept;
+
+    // 将 Unix 毫秒时间戳转换为带当前系统本地时区偏移量的 OffsetDateTime（保留毫秒精度）
+    static OffsetDateTime fromEpochMillisLocal(int64_t epochMs) noexcept;
 
     friend bool operator==(const OffsetDateTime& lhs, const OffsetDateTime& rhs) noexcept
     {
@@ -152,7 +156,7 @@ struct OffsetDateTime
     }
 };
 
-// UTF-8 / 宽字符 / std::filesystem::path 编解码与键字符集校验工具（严禁使用受 Windows ANSI 代码页污染的 path::string()）
+// UTF-8 / 宽字符 / std::filesystem::path 编解码与键字符集校验工具
 bool decodeUtf8Codepoint(std::string_view text, size_t& pos, char32_t& outCp) noexcept;
 bool isValidUtf8(std::string_view text, size_t* pErrorOffset = nullptr) noexcept;
 void appendUtf8Codepoint(std::string& out, char32_t cp);

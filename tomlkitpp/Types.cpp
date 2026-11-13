@@ -1,6 +1,7 @@
 module;
 
 #include "TKPMacros.hpp"
+#include <time.h>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
@@ -42,7 +43,7 @@ namespace
         }
     }
 
-    // Howard Hinnant 公历日期转天数算法（相对于 1970-01-01）
+    // Howard Hinnant 公历日期与自 1970-01-01 起天数的双向换算
     constexpr int64_t daysFromCivil(int64_t y, uint32_t m, uint32_t d) noexcept
     {
         y -= (m <= 2) ? 1 : 0;
@@ -51,6 +52,20 @@ namespace
         const uint32_t doy = (153u * (m + (m > 2 ? (uint32_t)-3 : 9u)) + 2u) / 5u + d - 1u;
         const uint32_t doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;
         return era * 146097 + (int64_t)doe - 719468;
+    }
+
+    constexpr std::tuple<int64_t, uint32_t, uint32_t> civilFromDays(int64_t z) noexcept
+    {
+        z += 719468;
+        const int64_t era = (z >= 0 ? z : z - 146096) / 146097;
+        const uint32_t doe = (uint32_t)(z - era * 146097);
+        const uint32_t yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        const int64_t y = (int64_t)yoe + era * 400;
+        const uint32_t doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        const uint32_t mp = (5 * doy + 2) / 153;
+        const uint32_t d = doy - (153 * mp + 2) / 5 + 1;
+        const uint32_t m = mp < 10 ? mp + 3 : mp - 9;
+        return { y + (m <= 2 ? 1 : 0), m, d };
     }
 }
 
@@ -172,6 +187,80 @@ std::pair<int64_t, uint32_t> OffsetDateTime::toUtcEpoch() const noexcept
         + (int64_t)time.second;
     const int64_t utcSecs = localSecs - (int64_t)(isUtcZ ? 0 : offsetMinutes) * 60;
     return { utcSecs, time.nanosecond };
+}
+
+int64_t OffsetDateTime::toEpochMillis() const noexcept
+{
+    const auto [utcSecs, nanos] = toUtcEpoch();
+    return utcSecs * 1000 + (int64_t)(nanos / 1'000'000u);
+}
+
+OffsetDateTime OffsetDateTime::fromEpochMillisLocal(int64_t epochMs) noexcept
+{
+    int64_t utcSec = epochMs / 1000;
+    int64_t remMs = epochMs % 1000;
+    if (remMs < 0) {
+        remMs += 1000;
+        --utcSec;
+    }
+
+    const time_t rawTime = (time_t)utcSec;
+    tm localTm{};
+    bool ok = false;
+    if ((int64_t)rawTime == utcSec) {
+#ifdef _WIN32
+        ok = (::localtime_s(&localTm, &rawTime) == 0);
+#else
+        ok = (::localtime_r(&rawTime, &localTm) != nullptr);
+#endif
+    }
+
+    OffsetDateTime out{};
+    out.delimiter = 'T';
+    out.time.nanosecond = (uint32_t)remMs * 1'000'000u;
+    out.time.subsecondDigits = 3;
+    out.time.hasSeconds = true;
+
+    if (ok && localTm.tm_year + 1900 >= 0 && localTm.tm_year + 1900 <= 9999) {
+        const uint16_t year = (uint16_t)(localTm.tm_year + 1900);
+        const uint8_t month = (uint8_t)(localTm.tm_mon + 1);
+        const uint8_t day = (uint8_t)localTm.tm_mday;
+        const uint8_t hour = (uint8_t)localTm.tm_hour;
+        const uint8_t minute = (uint8_t)localTm.tm_min;
+        const uint8_t second = (uint8_t)localTm.tm_sec;
+
+        const int64_t localEpochSec = daysFromCivil(year, month, day) * 86400
+            + (int64_t)hour * 3600
+            + (int64_t)minute * 60
+            + (int64_t)second;
+
+        out.date = LocalDate{ .year = year, .month = month, .day = day };
+        out.time.hour = hour;
+        out.time.minute = minute;
+        out.time.second = second;
+        out.isUtcZ = false;
+        out.offsetMinutes = (int16_t)((localEpochSec - utcSec) / 60);
+        return out;
+    }
+
+    int64_t days = utcSec / 86400;
+    int64_t secOfDay = utcSec % 86400;
+    if (secOfDay < 0) {
+        secOfDay += 86400;
+        --days;
+    }
+    const auto [y, m, d] = civilFromDays(days);
+    out.date = LocalDate{
+        .year = (uint16_t)std::clamp<int64_t>(y, 0, 9999),
+        .month = (uint8_t)m,
+        .day = (uint8_t)d
+    };
+    out.time.hour = (uint8_t)(secOfDay / 3600);
+    out.time.minute = (uint8_t)((secOfDay % 3600) / 60);
+    out.time.second = (uint8_t)(secOfDay % 60);
+    out.isUtcZ = false;
+    out.offsetMinutes = 0;
+    return out;
 }
 
 bool decodeUtf8Codepoint(std::string_view text, size_t& pos, char32_t& outCp) noexcept
