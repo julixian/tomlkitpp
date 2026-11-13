@@ -40,6 +40,7 @@ struct FormatOptions
     SpecVersion spec = SpecVersion::v1_1;
     std::string_view indent = "  ";
     std::string_view newline = "\n";
+    uint32_t maxLineWidth = 80;
     bool preferTrailingNewline = true;
 };
 

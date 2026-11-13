@@ -40,6 +40,7 @@ struct ArrayStorage
 {
     ArrayStyle style = ArrayStyle::Standard;
     bool multiline = false;
+    bool hasExplicitLayout = false;
     std::vector<ArrayElement> elements;
     std::string trailing;
 

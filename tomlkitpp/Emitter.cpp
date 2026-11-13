@@ -464,14 +464,19 @@ namespace
             }
         }
 
-        void emitValue(std::string& out, const Item& val) const
+        void emitValue(
+            std::string& out,
+            const Item& val,
+            uint32_t indentDepth = 0,
+            bool disallowAutoWrap = false
+        ) const
         {
             switch (val.kind())
             {
             case ItemKind::Empty:
                 throw TypeError("Cannot serialize uninitialized 'empty' TOML item");
             case ItemKind::Array:
-                emitStandardArray(out, *val.arrayStorage());
+                emitStandardArray(out, *val.arrayStorage(), indentDepth, disallowAutoWrap);
                 return;
             case ItemKind::Table:
                 emitInlineTable(out, val.tableStorage());
@@ -639,10 +644,72 @@ namespace
             out.push_back('"');
         }
 
-        void emitStandardArray(std::string& out, const ArrayStorage& arr) const
+        void emitStandardArray(
+            std::string& out,
+            const ArrayStorage& arr,
+            uint32_t indentDepth = 0,
+            bool disallowAutoWrap = false
+        ) const
         {
-            out.push_back('[');
             const size_t n = arr.elements.size();
+
+            bool canAutoWrap = !disallowAutoWrap
+                && m_options.maxLineWidth > 0
+                && !arr.hasExplicitLayout
+                && !arr.multiline
+                && n > 0
+                && arr.trailing.empty();
+            if (canAutoWrap) {
+                for (const ArrayElement& elem : arr.elements) {
+                    if (!elem.value->decor().prefix.empty()
+                        || !elem.beforeComma.empty()
+                        || (!elem.afterComma.empty() && elem.afterComma != " "))
+                    {
+                        canAutoWrap = false;
+                        break;
+                    }
+                }
+            }
+
+            if (canAutoWrap) {
+                std::string singleLine;
+                emitStandardArray(singleLine, arr, indentDepth, true);
+
+                const size_t lastNl = out.rfind('\n');
+                const size_t currentCol = (lastNl == std::string::npos)
+                    ? out.size()
+                    : (out.size() - lastNl - 1);
+
+                if (!singleLine.contains('\n') && currentCol + singleLine.size() <= m_options.maxLineWidth) {
+                    out.append(singleLine);
+                    return;
+                }
+
+                out.push_back('[');
+                out.append(m_options.newline);
+                for (size_t i = 0; i < n; ++i) {
+                    const ArrayElement& elem = arr.elements[i];
+                    if (elem.value->isEmpty()) {
+                        throw TypeError(std::format(
+                            "Cannot serialize uninitialized 'empty' TOML item at array index {}",
+                            i
+                        ));
+                    }
+                    for (uint32_t d = 0; d < indentDepth + 1; ++d) {
+                        out.append(m_options.indent);
+                    }
+                    emitValue(out, *elem.value, indentDepth + 1, false);
+                    out.push_back(',');
+                    out.append(m_options.newline);
+                }
+                for (uint32_t d = 0; d < indentDepth; ++d) {
+                    out.append(m_options.indent);
+                }
+                out.push_back(']');
+                return;
+            }
+
+            out.push_back('[');
             for (size_t i = 0; i < n; ++i) {
                 const ArrayElement& elem = arr.elements[i];
                 if (elem.value->isEmpty()) {
@@ -652,7 +719,7 @@ namespace
                     ));
                 }
                 out.append(elem.value->decor().prefix);
-                emitValue(out, *elem.value);
+                emitValue(out, *elem.value, indentDepth, disallowAutoWrap);
                 out.append(elem.beforeComma);
 
                 if (i + 1 < n) {
@@ -725,7 +792,7 @@ namespace
                     }
                     out.append(formatKeySegment(entry.key.leaf(), m_options.spec));
                     out.append(" = ");
-                    emitValue(out, val);
+                    emitValue(out, val, 0, true);
                     if (i + 1 < n) {
                         out.append(", ");
                     }
@@ -738,7 +805,7 @@ namespace
                 emitEntryKey(out, fe);
                 out.push_back('=');
                 out.append(val.decor().prefix);
-                emitValue(out, val);
+                emitValue(out, val, 0, !pTbl->multilineInline);
                 out.append(entry.beforeComma);
 
                 if (i + 1 < n) {

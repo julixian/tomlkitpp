@@ -243,6 +243,38 @@ void testEmptyItemSerializationErrorAndBoundsChecking()
     CHECK(reparsedDtDoc["lastWriteTime"].isOffsetDateTime());
     CHECK(reparsedDtDoc["lastWriteTime"].asOffsetDateTime() == localDt);
     CHECK(reparsedDtDoc["lastWriteTime"].asOffsetDateTime().toEpochMillis() == kSampleMs);
+
+    // 5. 验证新建数组默认按行宽自动多行折行，同时保留显式设置与解析原貌
+    Item wrapDoc = Item::document();
+    wrapDoc["shortDicts"] = { "CommonGpt", "CommonGpt_H" };
+    Item postDicts = Item::array();
+    postDicts.push_back("PostStd");
+    postDicts.push_back("PostPunctuation");
+    postDicts.push_back("PostRareCnChar");
+    postDicts.push_back("PostPunctuation_GT");
+    wrapDoc["dictNames"] = std::move(postDicts);
+
+    Item forcedSingleLine = Item::array({
+        "PostStd", "PostPunctuation", "PostRareCnChar", "PostPunctuation_GT"
+    });
+    forcedSingleLine.setMultilineArray(false);
+    wrapDoc["forcedSingle"] = std::move(forcedSingleLine);
+
+    const std::string wrapToml = tomlkit::format(wrapDoc);
+    CHECK(wrapToml.contains("shortDicts = [\"CommonGpt\", \"CommonGpt_H\"]\n"));
+    CHECK(wrapToml.contains(
+        "dictNames = [\n"
+        "  \"PostStd\",\n"
+        "  \"PostPunctuation\",\n"
+        "  \"PostRareCnChar\",\n"
+        "  \"PostPunctuation_GT\",\n"
+        "]\n"
+    ));
+    CHECK(wrapToml.contains("forcedSingle = [\"PostStd\", \"PostPunctuation\", \"PostRareCnChar\", \"PostPunctuation_GT\"]\n"));
+
+    constexpr std::string_view kParsedLongSingle =
+        "dictNames = [\"PostStd\", \"PostPunctuation\", \"PostRareCnChar\", \"PostPunctuation_GT\"]\n";
+    CHECK(tomlkit::format(tomlkit::parse(kParsedLongSingle)) == kParsedLongSingle);
 }
 
 int main()

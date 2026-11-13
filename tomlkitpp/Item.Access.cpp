@@ -589,6 +589,7 @@ Item& Item::setMultilineArray(bool multiline)
     ensureKind(ItemKind::Array);
     auto* pArr = arrayStorage();
     pArr->multiline = multiline;
+    pArr->hasExplicitLayout = true;
 
     if (pArr->style == ArrayStyle::Standard && !pArr->elements.empty()) {
         // 仅在现有元素未包含注释时自动重排单行/多行空白，避免破坏已有注释排版

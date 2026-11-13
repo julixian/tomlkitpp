@@ -458,6 +458,7 @@ namespace
 
             Item arrItem = Item::array();
             ArrayStorage* const pArr = arrItem.arrayStorage();
+            pArr->hasExplicitLayout = true;
 
             while (true) {
                 const auto prefixRes = m_lexer.consumeWsCommentNewlines();
