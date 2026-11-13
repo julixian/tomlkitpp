@@ -37,15 +37,18 @@ Its design draws from Python's `tomlkit` and Rust's `toml_edit`, combined with a
 - C++ Standard: C++23 (compiler and standard library with `import std;` support across Windows, macOS, and Linux)
 - Build System: `mcpp >= 2026.10.10.1` (or any build system supporting C++23 modules)
 
-Add `tomlkit.core` to `[dependencies]` in `mcpp.toml`:
+Add `julixian.tomlkitpp` to `[dependencies]` in `mcpp.toml` (or run `mcpp add julixian.tomlkitpp@1.0.0`):
 
 ```toml
 [dependencies]
+# Via mcpp-index
+julixian.tomlkitpp = "1.0.0"
+
 # Via Git repository
-tomlkit.core = { git = "https://github.com/julixian/tomlkitpp.git", subdir = "tomlkitpp" }
+julixian.tomlkitpp = { git = "https://github.com/julixian/tomlkitpp.git", subdir = "tomlkitpp" }
 
 # Or via local submodule path
-tomlkit.core = { path = "../3rdParty/tomlkitpp/tomlkitpp" }
+julixian.tomlkitpp = { path = "../3rdParty/tomlkitpp/tomlkitpp" }
 ```
 
 Import the module in source files:

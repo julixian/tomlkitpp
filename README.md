@@ -37,15 +37,18 @@
 - 语言标准：C++23（编译器与标准库需支持标准库模块 `import std;`，兼容 Windows / macOS / Linux）
 - 构建工具：`mcpp >= 2026.10.10.1`（或任意支持 C++23 模块构建的系统）
 
-在工程的 `mcpp.toml` 中通过 Git 仓库或本地子目录引入：
+在工程的 `mcpp.toml` 中通过包索引、Git 仓库或本地子目录引入（或执行 `mcpp add julixian.tomlkitpp@1.0.0`）：
 
 ```toml
 [dependencies]
+# 通过 mcpp-index 引入
+julixian.tomlkitpp = "1.0.0"
+
 # 通过 Git 引入
-tomlkit.core = { git = "https://github.com/julixian/tomlkitpp.git", subdir = "tomlkitpp" }
+julixian.tomlkitpp = { git = "https://github.com/julixian/tomlkitpp.git", subdir = "tomlkitpp" }
 
 # 或通过本地子模块路径引入
-tomlkit.core = { path = "../3rdParty/tomlkitpp/tomlkitpp" }
+julixian.tomlkitpp = { path = "../3rdParty/tomlkitpp/tomlkitpp" }
 ```
 
 在源码中导入模块，可配合类型别名与 JSON 库对照使用：

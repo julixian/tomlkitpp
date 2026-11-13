@@ -4,7 +4,7 @@ name = "test-adapter"
 description = "Official toml-test decoder, encoder, and full compliance runner for tomlkitpp"
 
 [dependencies]
-tomlkit.core = { path = "../../tomlkitpp" }
+julixian.tomlkitpp = { path = "../../tomlkitpp" }
 
 [build]
 default-profile = "release"

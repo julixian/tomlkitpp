@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __APPLE__
-#include <version>
-#endif
-
 #ifndef NAMESPACE_BEGIN
 #define NAMESPACE_BEGIN(name) namespace name {
 #endif
