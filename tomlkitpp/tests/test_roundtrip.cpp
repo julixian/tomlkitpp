@@ -101,7 +101,8 @@ void testTortureRoundtripCases()
 
     // 4. 程序构造以 `\n` 开头的多行字符串往返后不应被开头换行裁剪规则吞掉首行换行
     {
-        tomlkit::Document doc = tomlkit::Item::document();
+        using toml = tomlkit::Item;
+        toml doc = toml::document();
         tomlkit::Item mlBasic("\nleading newline basic\nline2");
         mlBasic.setStringStyle(tomlkit::StringStyle::MultilineBasic);
         doc["ml_basic"] = std::move(mlBasic);

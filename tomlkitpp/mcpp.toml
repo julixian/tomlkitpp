@@ -4,7 +4,7 @@ name = "core"
 version = "1.0.0"
 standard = "c++23"
 license = "Apache-2.0"
-description = "Zero-dependency C++23 module-only format-preserving TOML v1.1 library"
+description = "C++23 module-only format-preserving TOML v1.1 library"
 
 [build]
 default-profile = "release"

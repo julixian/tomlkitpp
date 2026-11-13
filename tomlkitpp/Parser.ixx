@@ -40,7 +40,7 @@ namespace detail
     );
 }
 
-// 从 std::filesystem::path 解析 UTF-8 TOML 文件（Windows 下直接使用原生宽字符路径，绝不调用受 ANSI 影响的 path::string()）
+// 从 std::filesystem::path 解析 UTF-8 TOML 文件（Windows 下使用原生宽字符路径）
 template<typename PathT>
     requires std::same_as<std::remove_cvref_t<PathT>, std::filesystem::path>
 std::expected<Item, ParseError> tryParseFile(
@@ -51,31 +51,21 @@ std::expected<Item, ParseError> tryParseFile(
     return detail::tryParsePathImpl(filePath, options);
 }
 
-// 从 UTF-8 路径字符串解析 UTF-8 TOML 文件（显式按 UTF-8 转宽字符路径，防止隐式构造 fs::path 走 Windows ANSI 代码页）
-inline std::expected<Item, ParseError> tryParseFile(
+// 从 UTF-8 / 宽字符路径字符串解析 UTF-8 TOML 文件
+std::expected<Item, ParseError> tryParseFile(
     std::string_view utf8FilePath,
     ParseOptions options = {}
-)
-{
-    return detail::tryParsePathImpl(utf8ToPath(utf8FilePath), options);
-}
+);
 
-// 从宽字符路径解析 UTF-8 TOML 文件
-inline std::expected<Item, ParseError> tryParseFile(
+std::expected<Item, ParseError> tryParseFile(
     std::wstring_view wideFilePath,
     ParseOptions options = {}
-)
-{
-    return detail::tryParsePathImpl(std::filesystem::path(wideFilePath), options);
-}
+);
 
-inline std::expected<Item, ParseError> tryParseFile(
+std::expected<Item, ParseError> tryParseFile(
     std::u8string_view u8FilePath,
     ParseOptions options = {}
-)
-{
-    return detail::tryParsePathImpl(std::filesystem::path(u8FilePath), options);
-}
+);
 
 template<typename PathT>
     requires std::same_as<std::remove_cvref_t<PathT>, std::filesystem::path>
@@ -87,28 +77,19 @@ Item parseFile(
     return detail::parsePathImpl(filePath, options);
 }
 
-inline Item parseFile(
+Item parseFile(
     std::string_view utf8FilePath,
     ParseOptions options = {}
-)
-{
-    return detail::parsePathImpl(utf8ToPath(utf8FilePath), options);
-}
+);
 
-inline Item parseFile(
+Item parseFile(
     std::wstring_view wideFilePath,
     ParseOptions options = {}
-)
-{
-    return detail::parsePathImpl(std::filesystem::path(wideFilePath), options);
-}
+);
 
-inline Item parseFile(
+Item parseFile(
     std::u8string_view u8FilePath,
     ParseOptions options = {}
-)
-{
-    return detail::parsePathImpl(std::filesystem::path(u8FilePath), options);
-}
+);
 
 NAMESPACE_END(tomlkit)

@@ -16,6 +16,6 @@ export import :Lexer;
 
 export NAMESPACE_BEGIN(tomlkit)
 
-inline constexpr std::string_view kLibraryVersion = "1.0.0";
+constexpr std::string_view kLibraryVersion = "1.0.0";
 
 NAMESPACE_END(tomlkit)

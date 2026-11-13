@@ -866,8 +866,6 @@ private:
     Key* m_pOwningKey = nullptr;
 };
 
-using Document = Item;
-
 namespace detail
 {
     template<typename T>
@@ -877,7 +875,7 @@ namespace detail
     struct IsStdOptionalTrait<std::optional<U>> : std::true_type { };
 
     template<typename T>
-    inline constexpr bool IsStdOptional = IsStdOptionalTrait<std::remove_cvref_t<T>>::value;
+    constexpr bool IsStdOptional = IsStdOptionalTrait<std::remove_cvref_t<T>>::value;
 
     template<typename FallbackT>
     using NormalizedFallbackType = std::conditional_t<

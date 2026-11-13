@@ -856,4 +856,58 @@ namespace detail
     }
 }
 
+void saveFileAtomic(
+    std::string_view utf8FilePath,
+    const Item& doc,
+    FormatOptions options
+)
+{
+    detail::savePathAtomicImpl(utf8ToPath(utf8FilePath), doc, options);
+}
+
+void saveFileAtomic(
+    std::wstring_view wideFilePath,
+    const Item& doc,
+    FormatOptions options
+)
+{
+    detail::savePathAtomicImpl(fs::path(wideFilePath), doc, options);
+}
+
+void saveFileAtomic(
+    std::u8string_view u8FilePath,
+    const Item& doc,
+    FormatOptions options
+)
+{
+    detail::savePathAtomicImpl(fs::path(u8FilePath), doc, options);
+}
+
+std::expected<void, ParseError> trySaveFileAtomic(
+    std::string_view utf8FilePath,
+    const Item& doc,
+    FormatOptions options
+)
+{
+    return detail::trySavePathAtomicImpl(utf8ToPath(utf8FilePath), doc, options);
+}
+
+std::expected<void, ParseError> trySaveFileAtomic(
+    std::wstring_view wideFilePath,
+    const Item& doc,
+    FormatOptions options
+)
+{
+    return detail::trySavePathAtomicImpl(fs::path(wideFilePath), doc, options);
+}
+
+std::expected<void, ParseError> trySaveFileAtomic(
+    std::u8string_view u8FilePath,
+    const Item& doc,
+    FormatOptions options
+)
+{
+    return detail::trySavePathAtomicImpl(fs::path(u8FilePath), doc, options);
+}
+
 NAMESPACE_END(tomlkit)

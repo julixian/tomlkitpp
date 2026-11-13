@@ -34,7 +34,7 @@ struct JsonNode
     }
 };
 
-inline void appendJsonEscaped(std::string& out, std::string_view s)
+void appendJsonEscaped(std::string& out, std::string_view s)
 {
     out.push_back('"');
     for (const char ch : s) {
@@ -62,7 +62,7 @@ inline void appendJsonEscaped(std::string& out, std::string_view s)
 }
 
 // 将 `tomlkit::Item` 编码为官方 `toml-test` 标记 JSON 字符串
-inline void emitTaggedJson(std::string& out, const Item& item)
+void emitTaggedJson(std::string& out, const Item& item)
 {
     const auto emitTagObjFunc = [&](std::string_view tag, std::string_view val)
         {
@@ -152,7 +152,7 @@ inline void emitTaggedJson(std::string& out, const Item& item)
     }
 }
 
-inline std::string itemToTaggedJson(const Item& doc)
+std::string itemToTaggedJson(const Item& doc)
 {
     std::string out;
     emitTaggedJson(out, doc);
@@ -353,7 +353,7 @@ private:
 };
 
 // 将官方标记 JSON 节点还原为 `tomlkit::Item`
-inline Item taggedJsonNodeToItem(const JsonNode& node, bool isRoot = false)
+Item taggedJsonNodeToItem(const JsonNode& node, bool isRoot = false)
 {
     if (node.kind == JsonNode::Kind::Array) {
         // 若非空且全部元素均为未标记表对象，构造为 ArrayOfTables 或内联表数组均可；若含内嵌子表用 ArrayOfTables 更清晰
@@ -459,7 +459,7 @@ inline Item taggedJsonNodeToItem(const JsonNode& node, bool isRoot = false)
     throw std::runtime_error("Unexpected bare string node in tagged JSON");
 }
 
-inline Item taggedJsonToItem(std::string_view jsonText)
+Item taggedJsonToItem(std::string_view jsonText)
 {
     MiniJsonParser parser(jsonText);
     const JsonNode root = parser.parseRoot();
@@ -467,7 +467,7 @@ inline Item taggedJsonToItem(std::string_view jsonText)
 }
 
 // 近似浮点容差 + 完整 TOML 语义等价比较（与官方 `toml-test` 判定准则对齐）
-inline bool itemsMatchForTomlTest(const Item& a, const Item& b) noexcept
+bool itemsMatchForTomlTest(const Item& a, const Item& b) noexcept
 {
     if (a.kind() != b.kind()) {
         return false;

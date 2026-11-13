@@ -814,4 +814,52 @@ namespace detail
     }
 }
 
+std::expected<Item, ParseError> tryParseFile(
+    std::string_view utf8FilePath,
+    ParseOptions options
+)
+{
+    return detail::tryParsePathImpl(utf8ToPath(utf8FilePath), options);
+}
+
+std::expected<Item, ParseError> tryParseFile(
+    std::wstring_view wideFilePath,
+    ParseOptions options
+)
+{
+    return detail::tryParsePathImpl(fs::path(wideFilePath), options);
+}
+
+std::expected<Item, ParseError> tryParseFile(
+    std::u8string_view u8FilePath,
+    ParseOptions options
+)
+{
+    return detail::tryParsePathImpl(fs::path(u8FilePath), options);
+}
+
+Item parseFile(
+    std::string_view utf8FilePath,
+    ParseOptions options
+)
+{
+    return detail::parsePathImpl(utf8ToPath(utf8FilePath), options);
+}
+
+Item parseFile(
+    std::wstring_view wideFilePath,
+    ParseOptions options
+)
+{
+    return detail::parsePathImpl(fs::path(wideFilePath), options);
+}
+
+Item parseFile(
+    std::u8string_view u8FilePath,
+    ParseOptions options
+)
+{
+    return detail::parsePathImpl(fs::path(u8FilePath), options);
+}
+
 NAMESPACE_END(tomlkit)
