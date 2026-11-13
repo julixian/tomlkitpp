@@ -587,6 +587,9 @@ namespace
                 }
                 if (validMlLiteral) {
                     out.append("'''");
+                    if (s.starts_with('\n')) {
+                        out.push_back('\n');
+                    }
                     out.append(s);
                     out.append("'''");
                     return;
@@ -596,6 +599,9 @@ namespace
 
             if (style == StringStyle::MultilineBasic) {
                 out.append("\"\"\"");
+                if (s.starts_with('\n')) {
+                    out.push_back('\n');
+                }
                 out.append(escapeBasicString(s, true, m_options.spec));
                 out.append("\"\"\"");
                 return;

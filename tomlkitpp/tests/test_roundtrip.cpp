@@ -98,6 +98,22 @@ void testTortureRoundtripCases()
     // 3. 纯注释文档与空文档
     verifyLosslessString("empty-doc", "");
     verifyLosslessString("comment-only-doc", "# 仅有注释的模板文件\n\n# 第二段注释");
+
+    // 4. 程序构造以 `\n` 开头的多行字符串往返后不应被开头换行裁剪规则吞掉首行换行
+    {
+        tomlkit::Document doc = tomlkit::Item::document();
+        tomlkit::Item mlBasic("\nleading newline basic\nline2");
+        mlBasic.setStringStyle(tomlkit::StringStyle::MultilineBasic);
+        doc["ml_basic"] = std::move(mlBasic);
+
+        tomlkit::Item mlLiteral("\nleading newline literal\nline2");
+        mlLiteral.setStringStyle(tomlkit::StringStyle::MultilineLiteral);
+        doc["ml_literal"] = std::move(mlLiteral);
+
+        const auto reparsed = tomlkit::parse(tomlkit::format(doc));
+        CHECK(reparsed["ml_basic"].asString() == "\nleading newline basic\nline2");
+        CHECK(reparsed["ml_literal"].asString() == "\nleading newline literal\nline2");
+    }
 }
 
 void testRealWorldWorkspaceTomlFiles()
