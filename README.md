@@ -37,7 +37,14 @@
 - 语言标准：C++23（编译器与标准库需支持标准库模块 `import std;`，兼容 Windows / macOS / Linux）
 - 构建工具：`mcpp >= 2026.10.10.1`（或任意支持 C++23 模块构建的系统）
 
-在工程的 `mcpp.toml` 中通过包索引、Git 仓库或本地子目录引入（或执行 `mcpp add julixian.tomlkitpp@1.0.0`）：
+可通过内置工程模板一键创建最小可运行示例：
+
+```bash
+mcpp new demo --template julixian.tomlkitpp
+cd demo && mcpp build && mcpp run
+```
+
+或在已有工程的 `mcpp.toml` 中通过包索引、Git 仓库或本地子目录引入（也可执行 `mcpp add julixian.tomlkitpp@1.0.0`）：
 
 ```toml
 [dependencies]

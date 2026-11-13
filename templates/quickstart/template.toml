@@ -1,0 +1,4 @@
+[template]
+description  = "Format-preserving TOML v1.1.0 parse, in-place edit, and round-trip demo with import tomlkitpp"
+default      = true
+post_message = "Next: cd into the project directory and run `mcpp build && mcpp run`."

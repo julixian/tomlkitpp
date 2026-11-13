@@ -1,0 +1,46 @@
+// {{project.name}}: TOML v1.1.0 parsing, surgical editing, and comment/format-preserving
+// serialization via `import tomlkitpp;`.
+import std;
+import tomlkitpp;
+
+using toml = tomlkit::Item;
+
+constexpr std::string_view kSampleToml = R"(# Application configuration
+title = "{{project.name}}"
+mask = 0xff_00
+
+[server]
+endpoint = { host = "127.0.0.1", port = 8080, } # TOML v1.1 trailing comma
+wakeup = 07:30 # TOML v1.1 optional seconds
+)";
+
+int main(int argc, char** argv)
+{
+    auto res = (argc > 1)
+        ? tomlkit::tryParseFile(argv[1])
+        : tomlkit::tryParse(kSampleToml);
+    if (!res) {
+        std::println(std::cerr, "{}", res.error().formatDiagnostic());
+        return 1;
+    }
+
+    toml& cfg = *res;
+    if (argc > 1) {
+        std::println("{}", tomlkit::format(cfg));
+        return 0;
+    }
+
+    const auto host = tomlkit::findOr(cfg, "server", "endpoint", "host", std::string{"0.0.0.0"});
+    const int oldPort = tomlkit::findOr(cfg, "server", "endpoint", "port", 80);
+
+    // Surgical edit: comments, hex literal `0xff_00`, and `07:30` remain untouched.
+    cfg["server", "endpoint", "port"] = 9090;
+    cfg["server", "timeoutMs"] = 5000;
+    cfg["server", "timeoutMs"].setInlineComment("added in-place");
+
+    const std::string emitted = tomlkit::format(cfg);
+    std::print("Updated endpoint {}:{} -> 9090:\n\n{}", host, oldPort, emitted);
+
+    const auto reparsed = tomlkit::tryParse(emitted);
+    return (reparsed && (*reparsed)["server", "endpoint", "port"].tryGet<int>() == 9090) ? 0 : 1;
+}

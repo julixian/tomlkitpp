@@ -37,7 +37,14 @@ Its design draws from Python's `tomlkit` and Rust's `toml_edit`, combined with a
 - C++ Standard: C++23 (compiler and standard library with `import std;` support across Windows, macOS, and Linux)
 - Build System: `mcpp >= 2026.10.10.1` (or any build system supporting C++23 modules)
 
-Add `julixian.tomlkitpp` to `[dependencies]` in `mcpp.toml` (or run `mcpp add julixian.tomlkitpp@1.0.0`):
+Create a minimal runnable starter project directly from the package template:
+
+```bash
+mcpp new demo --template julixian.tomlkitpp
+cd demo && mcpp build && mcpp run
+```
+
+Or add `julixian.tomlkitpp` to `[dependencies]` in `mcpp.toml` (or run `mcpp add julixian.tomlkitpp@1.0.0`):
 
 ```toml
 [dependencies]
