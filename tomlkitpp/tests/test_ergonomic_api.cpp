@@ -229,7 +229,7 @@ void testEmptyItemSerializationErrorAndBoundsChecking()
     CHECK(dictDoc.toToml().contains("\n  { org = \"a\", rep = \"b\" },\n  { org = \"c\", rep = \"d\" },\n]"));
 
     // 4. 验证本地时区偏移日期时间往返与毫秒时间戳精确一致
-    constexpr int64_t kSampleMs = 1763060952345LL;
+    constexpr std::int64_t kSampleMs = 1763060952345LL;
     const OffsetDateTime localDt = OffsetDateTime::fromEpochMillisLocal(kSampleMs);
     CHECK(localDt.isValid());
     CHECK(!localDt.isUtcZ);
