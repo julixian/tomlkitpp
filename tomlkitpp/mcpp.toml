@@ -1,0 +1,22 @@
+[package]
+namespace = "tomlkit"
+name = "core"
+description = "Zero-dependency C++23 module-only format-preserving TOML v1.1 library"
+
+[build]
+default-profile = "release"
+sources = [
+  "**/*.cpp",
+  "**/*.ixx",
+  "!tests/**",
+  "!x64/**",
+  "!x86/**"
+]
+module_extensions = [".ixx"]
+include_dirs = ["."]
+
+[target.windows.build]
+defines = ["_LIB"]
+
+[targets.tomlkitpp]
+kind = "lib"

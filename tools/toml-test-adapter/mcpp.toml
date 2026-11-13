@@ -1,0 +1,36 @@
+[package]
+namespace = "tomlkit"
+name = "test-adapter"
+description = "Official toml-test decoder, encoder, and full compliance runner for tomlkitpp"
+
+[dependencies]
+tomlkit.core = { path = "../../tomlkitpp" }
+
+[build]
+default-profile = "release"
+sources = [
+  "TaggedJson.ixx",
+  "!x64/**",
+  "!x86/**"
+]
+module_extensions = [".ixx"]
+include_dirs = ["../../tomlkitpp"]
+
+[target.windows.build]
+defines = ["_CONSOLE"]
+ldflags = ["-lshell32"]
+
+[targets.tomlkit-decoder]
+kind = "bin"
+main = "DecoderMain.cpp"
+windows_subsystem = "console"
+
+[targets.tomlkit-encoder]
+kind = "bin"
+main = "EncoderMain.cpp"
+windows_subsystem = "console"
+
+[targets.tomlkit-compliance-runner]
+kind = "bin"
+main = "ComplianceRunnerMain.cpp"
+windows_subsystem = "console"

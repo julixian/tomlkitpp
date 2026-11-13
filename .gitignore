@@ -1,0 +1,9 @@
+target/
+.mcpp/
+.vs/
+x64/
+x86/
+*.user
+*.sln
+*.slnx
+__pycache__/
