@@ -40,6 +40,11 @@ opt = 0
 debug = true
 lto = false
 
+[workspace.profile.opt]
+opt = 3
+debug = true
+lto = false
+
 [workspace.profile.asan]
 opt = 1
 debug = true

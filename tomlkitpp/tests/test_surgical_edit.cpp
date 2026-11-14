@@ -182,11 +182,11 @@ void testSubtreeArrayOfTablesExtractAndGraft()
     CHECK(finalToml.contains("# 保留的注释"));
     CHECK(finalToml.contains("org = 'foo'"));
 
-    const size_t posBackend = finalToml.find("[backend]");
-    const size_t posEpub = finalToml.find("[plugins.Epub]");
-    const size_t posPre = finalToml.find("[[plugins.Epub.preprocRegex]]");
-    const size_t posPost = finalToml.find("[[plugins.Epub.postprocRegex]]");
-    const size_t posSkip = finalToml.find("[plugins.SkipTrans]");
+    const std::size_t posBackend = finalToml.find("[backend]");
+    const std::size_t posEpub = finalToml.find("[plugins.Epub]");
+    const std::size_t posPre = finalToml.find("[[plugins.Epub.preprocRegex]]");
+    const std::size_t posPost = finalToml.find("[[plugins.Epub.postprocRegex]]");
+    const std::size_t posSkip = finalToml.find("[plugins.SkipTrans]");
     CHECK(posBackend < posEpub);
     CHECK(posEpub < posPre);
     CHECK(posPre < posPost);
