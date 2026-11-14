@@ -49,7 +49,7 @@ cd demo && mcpp build && mcpp run
 ```toml
 [dependencies]
 # 通过 mcpp-index 引入
-julixian.tomlkitpp = "1.0.1"
+julixian.tomlkitpp = "1.0.2"
 
 # 通过 Git 引入
 julixian.tomlkitpp = { git = "https://github.com/julixian/tomlkitpp.git", subdir = "tomlkitpp" }

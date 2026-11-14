@@ -49,7 +49,7 @@ Or add `julixian.tomlkitpp` to `[dependencies]` in `mcpp.toml` (or run `mcpp add
 ```toml
 [dependencies]
 # Via mcpp-index
-julixian.tomlkitpp = "1.0.1"
+julixian.tomlkitpp = "1.0.2"
 
 # Via Git repository
 julixian.tomlkitpp = { git = "https://github.com/julixian/tomlkitpp.git", subdir = "tomlkitpp" }
