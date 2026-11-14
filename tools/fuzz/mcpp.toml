@@ -1,0 +1,19 @@
+[package]
+namespace = "tomlkit"
+name = "fuzz"
+description = "Coverage-guided libFuzzer and standalone mutation invariant fuzzer for tomlkitpp"
+
+[dependencies]
+julixian.tomlkitpp = { path = "../../tomlkitpp" }
+
+[build]
+default-profile = "release"
+include_dirs = ["../../tomlkitpp"]
+
+[target.windows.build]
+defines = ["_CONSOLE"]
+
+[targets.tomlkit-fuzz]
+kind = "bin"
+main = "FuzzMain.cpp"
+windows_subsystem = "console"

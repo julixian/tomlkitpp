@@ -1,5 +1,5 @@
 [workspace]
-members = ["tomlkitpp", "tools/toml-test-adapter"]
+members = ["tomlkitpp", "tools/toml-test-adapter", "tools/fuzz"]
 
 [workspace.package]
 version = "1.0.1"
@@ -39,3 +39,17 @@ lto = true
 opt = 0
 debug = true
 lto = false
+
+[workspace.profile.asan]
+opt = 1
+debug = true
+lto = false
+cxxflags = ["-fsanitize=address,undefined", "-fno-omit-frame-pointer"]
+ldflags = ["-fsanitize=address,undefined"]
+
+[workspace.profile.libfuzzer]
+opt = 1
+debug = true
+lto = false
+cxxflags = ["-DTOMLKIT_LIBFUZZER=1", "-fsanitize=fuzzer,address,undefined", "-fno-omit-frame-pointer"]
+ldflags = ["-fsanitize=fuzzer,address,undefined"]

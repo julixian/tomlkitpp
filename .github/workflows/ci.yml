@@ -1,0 +1,238 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      fuzz_seconds:
+        description: 'Duration in seconds for coverage-guided libFuzzer run'
+        required: false
+        default: '30'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  MCPP_VERSION: '2026.11.12.1'
+
+jobs:
+  matrix:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64 (gcc / libstdc++)
+            os: ubuntu-latest
+            suffix: linux-x86_64
+            ext: tar.gz
+            toolchain: default
+          - name: linux-x64 (clang 23 / libstdc++)
+            os: ubuntu-latest
+            suffix: linux-x86_64
+            ext: tar.gz
+            toolchain: llvm@23.1.3
+          - name: macos-arm64 (clang 23 / libc++)
+            os: macos-15
+            suffix: macosx-arm64
+            ext: tar.gz
+            toolchain: llvm@23.1.3
+          - name: windows-x64 (clang 23 / msvc-stl)
+            os: windows-latest
+            suffix: windows-x86_64
+            ext: zip
+            toolchain: llvm@23.1.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore mcpp registry cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mcpp/registry
+            !~/.mcpp/registry/data/xim-pkgindex
+            !~/.mcpp/registry/data/mcpplibs
+          key: mcpp-reg-${{ runner.os }}-${{ matrix.toolchain }}-${{ env.MCPP_VERSION }}-${{ hashFiles('mcpp.toml', 'tomlkitpp/mcpp.toml') }}
+          restore-keys: |
+            mcpp-reg-${{ runner.os }}-${{ matrix.toolchain }}-${{ env.MCPP_VERSION }}-
+
+      - name: Install mcpp and toolchain
+        shell: bash
+        env:
+          SUFFIX: ${{ matrix.suffix }}
+          EXT: ${{ matrix.ext }}
+          TOOLCHAIN: ${{ matrix.toolchain }}
+        run: |
+          set -euo pipefail
+          root="mcpp-${MCPP_VERSION}-${SUFFIX}"
+          archive="$RUNNER_TEMP/$root.$EXT"
+          curl -fsSL --retry 4 --retry-all-errors -o "$archive" \
+            "https://github.com/mcpp-community/mcpp/releases/download/v${MCPP_VERSION}/$root.$EXT"
+          if [[ "$EXT" == "zip" ]]; then
+            powershell -NoProfile -Command "Expand-Archive -Force -Path '$archive' -DestinationPath '$RUNNER_TEMP'"
+          else
+            tar -xzf "$archive" -C "$RUNNER_TEMP"
+          fi
+          root_dir="$RUNNER_TEMP/$root"
+          mkdir -p "$HOME/.mcpp/registry"
+          cp -a "$root_dir/registry/." "$HOME/.mcpp/registry/"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            mcpp_home="$(cygpath -m "$HOME/.mcpp")"
+            mcpp_bin_dir="$(cygpath -m "$root_dir/bin")"
+            mcpp_exe="$mcpp_bin_dir/mcpp.exe"
+          else
+            mcpp_home="$HOME/.mcpp"
+            mcpp_bin_dir="$root_dir/bin"
+            mcpp_exe="$mcpp_bin_dir/mcpp"
+          fi
+          echo "MCPP_HOME=$mcpp_home" >> "$GITHUB_ENV"
+          echo "$mcpp_bin_dir" >> "$GITHUB_PATH"
+          export MCPP_HOME="$mcpp_home"
+          "$mcpp_exe" index update
+          if [[ "$TOOLCHAIN" != "default" ]]; then
+            "$mcpp_exe" toolchain install "$TOOLCHAIN"
+          fi
+
+      - name: Build workspace (--strict)
+        shell: bash
+        env:
+          TOOLCHAIN: ${{ matrix.toolchain }}
+        run: |
+          set -euo pipefail
+          tc_args=()
+          if [[ "$TOOLCHAIN" != "default" ]]; then
+            tc_args=(--toolchain "$TOOLCHAIN")
+          fi
+          mcpp build --workspace --strict --profile release "${tc_args[@]}"
+
+      - name: Run unit tests
+        shell: bash
+        env:
+          TOOLCHAIN: ${{ matrix.toolchain }}
+        run: |
+          set -euo pipefail
+          tc_args=()
+          if [[ "$TOOLCHAIN" != "default" ]]; then
+            tc_args=(--toolchain "$TOOLCHAIN")
+          fi
+          mcpp test --workspace --strict --profile release "${tc_args[@]}"
+
+      - name: Fetch official toml-test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth 1 https://github.com/toml-lang/toml-test.git "$RUNNER_TEMP/toml-test"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "TOML_TESTS_DIR=$(cygpath -m "$RUNNER_TEMP/toml-test/tests")" >> "$GITHUB_ENV"
+          else
+            echo "TOML_TESTS_DIR=$RUNNER_TEMP/toml-test/tests" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run official TOML v1.0.0 & v1.1.0 4-way compliance suite
+        shell: bash
+        env:
+          TOOLCHAIN: ${{ matrix.toolchain }}
+        run: |
+          set -euo pipefail
+          tc_args=()
+          if [[ "$TOOLCHAIN" != "default" ]]; then
+            tc_args=(--toolchain "$TOOLCHAIN")
+          fi
+          mcpp run -p tomlkit.test-adapter --profile release "${tc_args[@]}" tomlkit-compliance-runner -- "$TOML_TESTS_DIR"
+
+      - name: Run deterministic mutation invariant fuzzer smoke check
+        shell: bash
+        env:
+          TOOLCHAIN: ${{ matrix.toolchain }}
+        run: |
+          set -euo pipefail
+          tc_args=()
+          if [[ "$TOOLCHAIN" != "default" ]]; then
+            tc_args=(--toolchain "$TOOLCHAIN")
+          fi
+          mcpp run -p tomlkit.fuzz --profile release "${tc_args[@]}" tomlkit-fuzz -- "$TOML_TESTS_DIR" --iterations=15000
+
+  sanitizers-and-fuzz:
+    name: linux-x64 (ASan + UBSan + libFuzzer)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ASAN_OPTIONS: halt_on_error=1:abort_on_error=1:detect_leaks=1
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore mcpp registry cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.mcpp/registry
+            !~/.mcpp/registry/data/xim-pkgindex
+            !~/.mcpp/registry/data/mcpplibs
+          key: mcpp-reg-Linux-llvm@23.1.3-${{ env.MCPP_VERSION }}-${{ hashFiles('mcpp.toml', 'tomlkitpp/mcpp.toml') }}
+          restore-keys: |
+            mcpp-reg-Linux-llvm@23.1.3-${{ env.MCPP_VERSION }}-
+
+      - name: Install mcpp and llvm@23.1.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="mcpp-${MCPP_VERSION}-linux-x86_64"
+          archive="$RUNNER_TEMP/$root.tar.gz"
+          curl -fsSL --retry 4 --retry-all-errors -o "$archive" \
+            "https://github.com/mcpp-community/mcpp/releases/download/v${MCPP_VERSION}/$root.tar.gz"
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          root_dir="$RUNNER_TEMP/$root"
+          mkdir -p "$HOME/.mcpp/registry"
+          cp -a "$root_dir/registry/." "$HOME/.mcpp/registry/"
+          echo "MCPP_HOME=$HOME/.mcpp" >> "$GITHUB_ENV"
+          echo "$root_dir/bin" >> "$GITHUB_PATH"
+          export MCPP_HOME="$HOME/.mcpp"
+          "$root_dir/bin/mcpp" index update
+          "$root_dir/bin/mcpp" toolchain install llvm@23.1.3
+
+      - name: Fetch official toml-test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth 1 https://github.com/toml-lang/toml-test.git "$RUNNER_TEMP/toml-test"
+          echo "TOML_TESTS_DIR=$RUNNER_TEMP/toml-test/tests" >> "$GITHUB_ENV"
+
+      - name: Run unit tests under ASan + LSan + UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          mcpp test -p julixian.tomlkitpp --strict --profile asan --toolchain llvm@23.1.3
+
+      - name: Run official TOML v1.0.0 & v1.1.0 compliance suite under ASan + LSan + UBSan
+        shell: bash
+        run: |
+          set -euo pipefail
+          mcpp run -p tomlkit.test-adapter --profile asan --toolchain llvm@23.1.3 tomlkit-compliance-runner -- "$TOML_TESTS_DIR"
+
+      - name: Run coverage-guided libFuzzer + ASan + UBSan
+        shell: bash
+        env:
+          FUZZ_SECONDS: ${{ inputs.fuzz_seconds || '30' }}
+        run: |
+          set -euo pipefail
+          corpus="$RUNNER_TEMP/fuzz-corpus"
+          mkdir -p "$corpus"
+          # 按编号平铺提取官方套件中 <= 4 KiB 的样本作为初始变异语料库，避免不同子目录同名覆盖
+          idx=0
+          while IFS= read -r -d '' f; do
+            idx=$((idx + 1))
+            cp "$f" "$corpus/seed_${idx}.toml"
+          done < <(find "$TOML_TESTS_DIR" -type f -name '*.toml' -size -4k -print0)
+          mcpp run -p tomlkit.fuzz --profile libfuzzer --toolchain llvm@23.1.3 tomlkit-fuzz -- \
+            -max_total_time="${FUZZ_SECONDS}" -max_len=4096 -print_final_stats=1 "$corpus"

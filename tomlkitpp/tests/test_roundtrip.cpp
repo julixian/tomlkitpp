@@ -119,19 +119,27 @@ void testTortureRoundtripCases()
 
 void testRealWorldWorkspaceTomlFiles()
 {
-    // 若本地存在 GalTranslPP 示例配置与 mcpp.toml，直接做字节级 100% 原样往返回归测试
+    // 自动探测当前工作区内的真实 `.toml` 清单（若同级目录存在 GalTranslPP 示例配置也一并纳入字节级无损回归）
+    fs::path repoRoot = fs::current_path();
+    std::error_code ec;
+    if (!fs::exists(repoRoot / "tomlkitpp" / "mcpp.toml", ec) && fs::exists(repoRoot.parent_path() / "tomlkitpp" / "mcpp.toml", ec)) {
+        repoRoot = repoRoot.parent_path();
+    }
+
+    const fs::path gppRoot = repoRoot.parent_path() / "GalTranslPP";
     const std::vector<fs::path> realFiles = {
-        tomlkit::utf8ToPath(R"(D:\VSProj\tomlkitpp\mcpp.toml)"),
-        tomlkit::utf8ToPath(R"(D:\VSProj\tomlkitpp\tomlkitpp\mcpp.toml)"),
-        tomlkit::utf8ToPath(R"(D:\VSProj\GalTranslPP\mcpp.toml)"),
-        tomlkit::utf8ToPath(R"(D:\VSProj\GalTranslPP\Example\BaseConfig\GlobalConfig.toml)"),
-        tomlkit::utf8ToPath(R"(D:\VSProj\GalTranslPP\Example\BaseConfig\Prompt.toml)"),
-        tomlkit::utf8ToPath(R"(D:\VSProj\GalTranslPP\Example\SampleProject\Config.toml)")
+        repoRoot / "mcpp.toml",
+        repoRoot / "tomlkitpp" / "mcpp.toml",
+        repoRoot / "tools" / "toml-test-adapter" / "mcpp.toml",
+        repoRoot / "templates" / "quickstart" / "template.toml",
+        gppRoot / "mcpp.toml",
+        gppRoot / "Example" / "BaseConfig" / "GlobalConfig.toml",
+        gppRoot / "Example" / "BaseConfig" / "Prompt.toml",
+        gppRoot / "Example" / "SampleProject" / "Config.toml"
     };
 
     std::size_t testedCount = 0;
     for (const fs::path& p : realFiles) {
-        std::error_code ec;
         if (!fs::exists(p, ec)) {
             continue;
         }
@@ -140,7 +148,7 @@ void testRealWorldWorkspaceTomlFiles()
         verifyLosslessString(tomlkit::pathToUtf8(p), raw);
         ++testedCount;
     }
-    CHECK(testedCount >= 2);
+    CHECK(testedCount >= 3);
 }
 
 int main()
