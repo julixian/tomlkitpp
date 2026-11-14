@@ -71,7 +71,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
 namespace
 {
-    constexpr std::array<std::string_view, 16> kBuiltinSeeds = {
+    constexpr auto kBuiltinSeeds = std::to_array<std::string_view>({
         "",
         "# comment only\n",
         "\xEF\xBB\xBFk = 1 # bom\r\n",
@@ -81,6 +81,7 @@ namespace
         "t1 = 07:30\nt2 = 2026-11-14 09:45\nt3 = 2026-11-14T09:45:59.123456789-08:00\n",
         "inline_ml = {\n  # c1\n  a = [1,\n    # c2\n    2\n  ],\n  'quoted.key' = true,\n}\n",
         "[a.b.c]\nx = 1\n[a]\ny = 2\n",
+        "# cmt\n\n[a.b.c.f]\n  z = 9\n\n[a]\n  b.c.d.k.t = \"val\"\n",
         "3.14 = -9_223_372_036_854_775_808\n",
         "utf8_key_🚀 = \"こんにちは世界\"\n",
         "bad1 = [1, 2\n",
@@ -88,12 +89,12 @@ namespace
         "bad3 = { a = 1 }\nbad3.b = 2\n",
         "deep = [[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]\n",
         "[x]\na = 0b1010_0101\nb = 0o755\nc = +inf\nd = -inf\n"
-    };
+    });
 
-    constexpr std::array<std::string_view, 20> kTokens = {
+    constexpr auto kTokens = std::to_array<std::string_view>({
         "=", ".", ",", "[", "]", "[[", "]]", "{", "}", "\"", "'", "\"\"\"", "'''",
         "#cmt\n", "\r\n", "\n", "\\e", "\\x00", "\\u0041", "2026-02-29T12:00Z"
-    };
+    });
 
     std::string mutateInput(std::string base, std::mt19937_64& rng, const std::vector<std::string>& corpus)
     {
@@ -155,13 +156,18 @@ namespace
         if (!fs::is_directory(p, ec)) {
             return;
         }
+        std::vector<fs::path> foundPaths;
         for (const auto& entry : fs::recursive_directory_iterator(p, ec)) {
             if (entry.is_regular_file(ec) && entry.path().extension() == ".toml") {
-                std::ifstream ifs(entry.path(), std::ios::binary);
-                std::string raw((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-                if (raw.size() <= 65536) {
-                    corpus.push_back(std::move(raw));
-                }
+                foundPaths.push_back(entry.path());
+            }
+        }
+        std::ranges::sort(foundPaths);
+        for (const fs::path& filePath : foundPaths) {
+            std::ifstream ifs(filePath, std::ios::binary);
+            std::string raw((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            if (raw.size() <= 65536) {
+                corpus.push_back(std::move(raw));
             }
         }
     }

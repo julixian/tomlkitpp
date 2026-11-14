@@ -118,6 +118,28 @@ b = 2
         CHECK(res->toToml() == kValidSuper);
     }
 
+    // 合法（Fuzzer 回归用例）：先通过深层表 `[a.b.c.f]` 产生隐式中间父表 `a.b` / `a.b.c`，
+    // 后打开父表 `[a]` 并用点分键穿透 `b.c` 写入新分支 `b.c.d.k.t`，必须满足字节级无损与语义一致
+    {
+        constexpr std::string_view kImplicitSuperThenDotted =
+            "# header comment\n"
+            "\n"
+            "[a.b.c.f]\n"
+            "  z = 9\n"
+            "\n"
+            "[a]\n"
+            "  first = 1\n"
+            "  b.c.d.k.t = \"nested via implicit super\"\n"
+            "  last = 2\n";
+        const auto res = tryParse(kImplicitSuperThenDotted);
+        CHECK(res.has_value());
+        CHECK((*res)["a", "b", "c", "f", "z"].asInteger() == 9);
+        CHECK((*res)["a", "b", "c", "d", "k", "t"].asString() == "nested via implicit super");
+        CHECK(res->toToml() == kImplicitSuperThenDotted);
+        const auto reparsed = tryParse(res->toToml());
+        CHECK(reparsed.has_value() && *reparsed == *res);
+    }
+
     // 非法：点分键定义表后试图再用 `[t1.t2]` 重新打开
     CHECK(!tryParse("[t1]\nt2.t3.v = 0\n[t1.t2]\n").has_value());
 

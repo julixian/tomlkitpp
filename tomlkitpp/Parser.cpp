@@ -330,6 +330,11 @@ namespace
                             std::format("Cannot use dotted keys to append into table '{}' defined outside this block", segName)
                         ));
                     }
+                    // 若此前仅作为后代 `[section]` 的隐式父表创建（`ImplicitSuper`），
+                    // 在祖先表内首次通过点分键穿透赋值时需转为 `Dotted`，避免序列化时重复拆出独立 `[header]`
+                    if (pSubTbl->style == TableStyle::ImplicitSuper) {
+                        pSubTbl->style = TableStyle::Dotted;
+                    }
                     pSubTbl->isExplicitlyDefined = true;
                     pSubTbl->dottedKeyScopeId = scopeId;
                     pCur = pSubTbl;
