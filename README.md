@@ -44,12 +44,12 @@ mcpp new demo --template julixian.tomlkitpp
 cd demo && mcpp build && mcpp run
 ```
 
-或在已有工程的 `mcpp.toml` 中通过包索引、Git 仓库或本地子目录引入（也可执行 `mcpp add julixian.tomlkitpp@1.0.0`）：
+或在已有工程的 `mcpp.toml` 中通过包索引、Git 仓库或本地子目录引入（也可执行 `mcpp add julixian.tomlkitpp`）：
 
 ```toml
 [dependencies]
 # 通过 mcpp-index 引入
-julixian.tomlkitpp = "1.0.0"
+julixian.tomlkitpp = "1.0.1"
 
 # 通过 Git 引入
 julixian.tomlkitpp = { git = "https://github.com/julixian/tomlkitpp.git", subdir = "tomlkitpp" }

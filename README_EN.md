@@ -44,12 +44,12 @@ mcpp new demo --template julixian.tomlkitpp
 cd demo && mcpp build && mcpp run
 ```
 
-Or add `julixian.tomlkitpp` to `[dependencies]` in `mcpp.toml` (or run `mcpp add julixian.tomlkitpp@1.0.0`):
+Or add `julixian.tomlkitpp` to `[dependencies]` in `mcpp.toml` (or run `mcpp add julixian.tomlkitpp`):
 
 ```toml
 [dependencies]
 # Via mcpp-index
-julixian.tomlkitpp = "1.0.0"
+julixian.tomlkitpp = "1.0.1"
 
 # Via Git repository
 julixian.tomlkitpp = { git = "https://github.com/julixian/tomlkitpp.git", subdir = "tomlkitpp" }

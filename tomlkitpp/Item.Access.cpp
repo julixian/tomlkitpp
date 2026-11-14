@@ -8,6 +8,30 @@ import :Item;
 
 NAMESPACE_BEGIN(tomlkit)
 
+namespace detail
+{
+    // 规避 Clang 23 + libc++ 模块接口模板中 `std::format` 触发的前端反序列化崩溃（非本库问题，将来上游修复后可移除）
+    void throwNegativeArrayIndex(int64_t index)
+    {
+        throw OutOfRangeError(std::format("Negative array index {}", index));
+    }
+
+    void throwCannotConvertKind(std::string_view kindName)
+    {
+        throw TypeError(std::format("Cannot convert TOML item of kind '{}' to requested C++ type", kindName));
+    }
+
+    void throwCannotLookupKeyOnKind(std::string_view key, std::string_view kindName)
+    {
+        throw TypeError(std::format("Cannot lookup key '{}' on non-table TOML item of kind '{}'", key, kindName));
+    }
+
+    void throwCannotIndexOnKind(std::string_view kindName)
+    {
+        throw TypeError(std::format("Cannot index on non-array TOML item of kind '{}'", kindName));
+    }
+}
+
 size_t Item::size() const noexcept
 {
     if (const auto* pArr = arrayStorage()) {

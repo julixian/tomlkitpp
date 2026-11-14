@@ -17,6 +17,18 @@ class Item;
 template<typename T>
 struct Serializer;
 
+namespace detail
+{
+    // 注：在 Clang 23 + LLVM libc++ 的 C++23 模块构建下（如 macOS arm64），将 `std::format(...)`
+    // 直接写在导出模块接口（.ixx）的未实例化模板中，会导致 `consteval std::basic_format_string::__handles_`
+    // 内部的泛型 lambda AST 写入 `.pcm` 后在消费端延迟实例化时触发 Clang 前端 `Sema::CheckTemplateIdType`
+    // 段错误崩溃（编译器自身模块反序列化 Bug，非本库逻辑问题；待未来上游 LLVM/Clang 修复后可评估内联）。
+    [[noreturn]] void throwNegativeArrayIndex(int64_t index);
+    [[noreturn]] void throwCannotConvertKind(std::string_view kindName);
+    [[noreturn]] void throwCannotLookupKeyOnKind(std::string_view key, std::string_view kindName);
+    [[noreturn]] void throwCannotIndexOnKind(std::string_view kindName);
+}
+
 struct ArrayElement
 {
     Item* pValue() noexcept;
@@ -555,7 +567,7 @@ public:
         if (auto opt = tryGet<T>()) {
             return std::move(*opt);
         }
-        throw TypeError(std::format("Cannot convert TOML item of kind '{}' to requested C++ type", kindName()));
+        detail::throwCannotConvertKind(kindName());
     }
 
     template<typename T>
@@ -625,7 +637,7 @@ public:
     {
         if constexpr (std::signed_integral<std::remove_cvref_t<Idx>>) {
             if (index < 0) {
-                throw OutOfRangeError(std::format("Negative array index {}", index));
+                detail::throwNegativeArrayIndex((int64_t)index);
             }
         }
         return at((size_t)index);
@@ -636,7 +648,7 @@ public:
     {
         if constexpr (std::signed_integral<std::remove_cvref_t<Idx>>) {
             if (index < 0) {
-                throw OutOfRangeError(std::format("Negative array index {}", index));
+                detail::throwNegativeArrayIndex((int64_t)index);
             }
         }
         return at((size_t)index);
@@ -820,7 +832,7 @@ private:
         else {
             if constexpr (std::signed_integral<std::remove_cvref_t<Step>>) {
                 if (s < 0) {
-                    throw OutOfRangeError(std::format("Negative array index {}", s));
+                    detail::throwNegativeArrayIndex((int64_t)s);
                 }
             }
             return at((size_t)s);
@@ -836,7 +848,7 @@ private:
         else {
             if constexpr (std::signed_integral<std::remove_cvref_t<Step>>) {
                 if (s < 0) {
-                    throw OutOfRangeError(std::format("Negative array index {}", s));
+                    detail::throwNegativeArrayIndex((int64_t)s);
                 }
             }
             return at((size_t)s);
@@ -852,7 +864,7 @@ private:
         else {
             if constexpr (std::signed_integral<std::remove_cvref_t<Step>>) {
                 if (s < 0) {
-                    throw OutOfRangeError(std::format("Negative array index {}", s));
+                    detail::throwNegativeArrayIndex((int64_t)s);
                 }
             }
             return at((size_t)s);
@@ -924,13 +936,13 @@ namespace detail
         if constexpr (PathKeyLike<Step>) {
             const std::string_view keySv(step);
             if (!current.isTable()) {
-                throw TypeError(std::format("Cannot lookup key '{}' on non-table TOML item of kind '{}'", keySv, current.kindName()));
+                throwCannotLookupKeyOnKind(keySv, current.kindName());
             }
             return current.find(keySv);
         }
         else {
             if (!current.isArray()) {
-                throw TypeError(std::format("Cannot index on non-array TOML item of kind '{}'", current.kindName()));
+                throwCannotIndexOnKind(current.kindName());
             }
             if constexpr (std::signed_integral<std::remove_cvref_t<Step>>) {
                 if (step < 0) {
@@ -1024,7 +1036,7 @@ T find(const Item& root, Steps&&... steps)
                 else {
                     if constexpr (std::signed_integral<std::remove_cvref_t<S>>) {
                         if (s < 0) {
-                            throw OutOfRangeError(std::format("Negative array index {}", s));
+                            detail::throwNegativeArrayIndex((int64_t)s);
                         }
                     }
                     return root.at((size_t)s);

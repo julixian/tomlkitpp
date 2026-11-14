@@ -2,7 +2,7 @@
 members = ["tomlkitpp", "tools/toml-test-adapter"]
 
 [workspace.package]
-version = "1.0.0"
+version = "1.0.1"
 standard = "c++23"
 license = "Apache-2.0"
 mcpp = ">=2026.10.10.1"
