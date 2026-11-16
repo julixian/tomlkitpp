@@ -37,6 +37,8 @@
 - 语言标准：C++23（编译器与标准库需支持标准库模块 `import std;`，兼容 Windows / macOS / Linux）
 - 构建工具：`mcpp >= 2026.10.10.1`（或任意支持 C++23 模块构建的系统）
 
+> **C++11–C++20 / CMake / vcpkg 项目？** 可使用 API 完全对齐的 Header-Only 姊妹库 **[tomlkit11](https://github.com/julixian/tomlkit11)**，后续升级至 `tomlkitpp` 仅需极小改动（将 `#include <tomlkit11/tomlkit11.hpp>` 替换为 `import tomlkitpp;`）。
+
 可通过内置工程模板一键创建最小可运行示例：
 
 ```bash

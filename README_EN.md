@@ -37,6 +37,8 @@ Its design draws from Python's `tomlkit` and Rust's `toml_edit`, combined with a
 - C++ Standard: C++23 (compiler and standard library with `import std;` support across Windows, macOS, and Linux)
 - Build System: `mcpp >= 2026.10.10.1` (or any build system supporting C++23 modules)
 
+> **Using C++11–C++20, CMake, or vcpkg?** Check out the API-compatible header-only sister library **[tomlkit11](https://github.com/julixian/tomlkit11)** — upgrading to `tomlkitpp` later requires minimal changes (replacing `#include <tomlkit11/tomlkit11.hpp>` with `import tomlkitpp;`).
+
 Create a minimal runnable starter project directly from the package template:
 
 ```bash
