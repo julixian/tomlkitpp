@@ -2,6 +2,8 @@
 
 [简体中文](./README.md) | English
 
+[![Try it on Compiler Explorer](https://img.shields.io/badge/Compiler_Explorer-Try_Online-1f6feb?logo=compilerexplorer&logoColor=white)](https://godbolt.org/z/8PqT131j1)
+
 `tomlkitpp` is a modern TOML parsing, editing, and serialization library written as a C++23 module (`export module tomlkitpp;`). It targets **TOML v1.1.0** by default and preserves comments, whitespace, indentation, and literal representations across edits.
 
 Its design draws from Python's `tomlkit` and Rust's `toml_edit`, combined with a single dynamic value class `tomlkit::Item` inspired by `nlohmann/json`.
@@ -29,6 +31,22 @@ Its design draws from Python's `tomlkit` and Rust's `toml_edit`, combined with a
 - **100% Pass Rate on Official [`toml-lang/toml-test`](https://github.com/toml-lang/toml-test)**:
   - **TOML v1.1.0**: Valid `218/218`, Invalid `502/502`, Round-trip `218/218`, Encoder `218/218`
   - **TOML v1.0.0**: Valid `208/208`, Invalid `509/509`, Round-trip `208/208`, Encoder `208/208`
+
+---
+
+## Comparison with Other C++ TOML Libraries
+
+| Dimension | **tomlkitpp** | **[tomlkit11](https://github.com/julixian/tomlkit11)** | **toml++** (v3.4) | **toml11** (v4.4) |
+| --- | --- | --- | --- | --- |
+| **Minimum C++ Standard** | C++23 | **C++11** | C++17 | **C++11** |
+| **Distribution** | **Native C++23 module** (`export module`) | Header-only / single-header / optional static lib | Header-only / single-header / optional compiled lib | Header-only / single-header / optional precompiled lib |
+| **TOML Spec Support** | **v1.1.0** (default) & v1.0.0 | **v1.1.0** (default) & v1.0.0 | v1.0.0 | **v1.1.0** & v1.0.0 |
+| **Comment & Whitespace Preservation** | **Full** (leading/inline/inner comments, blank lines, indentation) | **Full** (same as `tomlkitpp`) | No (AST-only, oriented toward parsing & fresh emission) | Partial (`preserve_comments` keeps node-attached comments, not blank lines or exact whitespace trivia) |
+| **Literal Format & Key Order Preservation** | **Verbatim replay** (`0xff_00`, quote styles, dotted keys, section order) | **Verbatim replay** (same as `tomlkitpp`) | No (`table` sorts keys lexicographically by default) | Partial (`ordered_value` keeps order and radix/quote enums, not numeric underscores or raw text) |
+| **Value Model** | Single `tomlkit::Item` (native `doc["a", "b", 0]`) | Single `tomlkit::Item` (unlocks `doc["a", "b", 0]` in C++23) | Polymorphic `toml::node` hierarchy | Templated `toml::basic_value<Config>` |
+| **Non-Throwing API / `-fno-exceptions`** | `std::expected` APIs (`tryParse` / `tryGet`) | **Full** (`Result<T, E>` + `-fno-exceptions` / `/EHs-c-`) | **Full** (`TOML_EXCEPTIONS=0`) | Provides `try_parse`; does not compile with exceptions disabled |
+
+> **When to choose which**: For read-only config loading or generating fresh TOML from scratch, AST-based libraries like `toml++` are lightweight and mature. When your tool needs to **programmatically update config files in place without stripping user comments, blank lines, or literal formatting** (similar to Rust's `toml_edit` or Python's `tomlkit`), choose `tomlkitpp` (C++23 module) or `tomlkit11` (C++11+).
 
 ---
 
